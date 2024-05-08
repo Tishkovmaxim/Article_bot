@@ -1,4 +1,4 @@
-import telebot
+rimport telebot
 import sqlite3
 import validators
 import pandas as pd
@@ -7,10 +7,10 @@ from scholarly import ProxyGenerator
 from scholarly import _proxy_generator
 
 # Telegram API token
-token = '6900920415:AAGYm-HmKmZWv3-g22SgUCCAwLToVdneYKc'
+token = 'insert_here'
 
 # ScraperAPI token for Scholarly proxy
-API_key = 'afd58d7c2ec57a59b8402ff88270d248'
+API_key = 'insert_here'
 
 # Generate proxy to bypass Google Scholar antibot
 pg = ProxyGenerator()
