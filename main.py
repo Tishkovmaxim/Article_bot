@@ -1,4 +1,4 @@
-rimport telebot
+import telebot
 import sqlite3
 import validators
 import pandas as pd
@@ -7,10 +7,10 @@ from scholarly import ProxyGenerator
 from scholarly import _proxy_generator
 
 # Telegram API token
-token = 'insert_here'
+token = '6900920415:AAGYm-HmKmZWv3-g22SgUCCAwLToVdneYKc'
 
 # ScraperAPI token for Scholarly proxy
-API_key = 'insert_here'
+API_key = 'afd58d7c2ec57a59b8402ff88270d248'
 
 # Generate proxy to bypass Google Scholar antibot
 pg = ProxyGenerator()
@@ -160,19 +160,13 @@ def delete_id(rowid: int) -> None:
     """
     loc_connection = sqlite3.connect(db_name)
     loc_cursor = loc_connection.cursor()
-    loc_cursor.execute('SELECT * FROM Articles where rowid = ?', (rowid,))
-    # check is rowid belongs to existing articles
+    # deletion
+    loc_cursor.execute('DELETE FROM Articles where rowid = ? RETURNING rowid', (rowid,))
     row = loc_cursor.fetchone()
     if row is None:
         loc_connection.commit()
         loc_connection.close()
         raise Exception('Такого id нет!')
-    loc_connection.commit()
-    # deletion
-    loc_cursor.execute('DELETE FROM Articles where rowid = ?', (rowid,))
-    loc_connection.commit()
-    # renumeration id after deleting
-    loc_cursor.execute('UPDATE Articles set rowid=rowid-1 where rowid > ?', (rowid,))
     loc_connection.commit()
     loc_connection.close()
 
@@ -194,7 +188,7 @@ def start_command(message):
     This function operate on /start command from user
     welcome message will appear
     """
-    welcome_message = 'Привет!\n Article_bot - Бот для организации хранения ссылок на научные статьи!' \
+    welcome_message = 'Привет!\n Article_bot - Бот для организации хранения ссылок с поиском данных в Google Scholar!' \
                       ' \n Вызовите /help чтобы получить подробности'
     bot.send_message(message.chat.id, welcome_message)
 
@@ -206,14 +200,13 @@ def help_command(message):
     Show help
     """
     help_vocabular = {"/add + URL": "Введите команду /add и укажите URL адрес статьи, которую хотите добавить",
-                      "/show_id + id": "Введите команду /show_id и укажите id статьи, информацию о которой хотите вывести",
+                      "/show_by_id + id": "Введите команду /show_id и укажите id статьи, информацию о которой хотите вывести",
                       "/show_all": "Введите команду /show_all, чтобы вывести информацию о всех сохраненных статьях",
                       "/export + format": "Введите команду /export и укажите формат (Поддерживается format=xlsx/csv) для экспорта сохраненных статей",
-                      "/delete_id + id": "Введите команду /delete_id и укажите id статьи, которую хотите удалить из списка",
+                      "/delete_by_id + id": "Введите команду /delete_id и укажите id статьи, которую хотите удалить из списка",
                       "/clear": "Введите команду /clear, чтобы удалить все сохраненные статьи",
                       }
-    help_message = "Article_bot - Бот для организации хранения ссылок на научные статьи!" \
-                   " \n Знак \"+\" писть не нужно.\n"
+    help_message = "Article_bot - Бот для организации хранения ссылок с поиском данных в Google Scholar!"+ "\n"
     for key in help_vocabular.keys():
         help_message = help_message + key + " - " + help_vocabular[key] + "\n"
     bot.send_message(message.chat.id, help_message)
@@ -227,6 +220,8 @@ def add_command(message):
     """
     # query expected to be url
     query = message.text.replace('/add', '').strip().replace(" ", "")
+    query = query[query.find('http'):]
+
     # check url is valid
     if validators.url(query):
         bot.send_message(message.chat.id, "Пытаюсь найти статью в Scholar...")
@@ -248,14 +243,14 @@ def add_command(message):
         bot.send_message(message.chat.id, "Некорректная ссылка")
 
 
-@bot.message_handler(commands=['show_id'])
+@bot.message_handler(commands=['show_by_id'])
 def show_id_command(message):
     """
     This function operate on /show_id command from user
     Show information about article by id, syntax: "/show_id id"
     """
     # retrieve id to show
-    id_to_show = message.text.replace('/show_id', '').strip().replace(" ", "")
+    id_to_show = message.text.replace('/show_by_id', '').strip().replace(" ", "")
     # id check
     try:
         id_to_show = int(id_to_show)
@@ -290,13 +285,13 @@ def clear_command(message):
     bot.send_message(message.chat.id, "Все статьи удалены")
 
 
-@bot.message_handler(commands=['delete_id'])
+@bot.message_handler(commands=['delete_by_id'])
 def delete_id_command(message):
     """
     This function operate on /delete_id command from user
     delete article from the sqlite database by id, syntax: "/delete id"
     """
-    id_to_delete = message.text.replace('/delete_id', '').strip().replace(" ", "")
+    id_to_delete = message.text.replace('/delete_by_id', '').strip().replace(" ", "")
     # id check
     try:
         id_to_delete = int(id_to_delete)
@@ -320,8 +315,14 @@ def export_command(message):
     supported_types = ['csv', 'xlsx']
     outtype = message.text.replace('/export', '').strip().replace(" ", "")
     # check outtype is supported
-    if outtype not in supported_types:
-        bot.send_message(message.chat.id, "Неподдерживаемый тип " + outtype)
+    type_found = False
+    for s_type in supported_types:
+        if s_type in outtype:
+            outtype = s_type
+            type_found = True
+
+    if not type_found:
+        bot.send_message(message.chat.id, "Неподдерживаемый формат: " + outtype)
         return
 
     loc_connection = sqlite3.connect(db_name)
